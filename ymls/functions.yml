@@ -1,0 +1,15 @@
+# Module: Orders
+# Description: Orders functions
+AddOrder:
+  handler: src/modules/orders/http/handlers/add-order.handler
+  name: ${self:service}-${self:provider.stage}-addOrder
+  environment:
+    DYNAMO_TABLE_PROCESS: ${file(./ymls/environment.yml):${opt:stage}.DYNAMO_TABLE_PROCESS}
+    STAGE: ${file(./ymls/environment.yml):${opt:stage}.STAGE}
+
+GetOrderById:
+  handler: src/modules/orders/http/handlers/get-order-by-id.handler
+  name: ${self:service}-${self:provider.stage}-getOrderById
+  environment:
+    DYNAMO_TABLE_PROCESS: ${file(./ymls/environment.yml):${opt:stage}.DYNAMO_TABLE_PROCESS}
+    STAGE: ${file(./ymls/environment.yml):${opt:stage}.STAGE}

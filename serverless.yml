@@ -1,0 +1,52 @@
+service: boilerplate-serverless-step-functions
+
+plugins:
+  - serverless-prune-plugin
+  - serverless-step-functions
+
+build:
+  esbuild:
+    bundle: true
+    minify: false
+    external:
+      - "@aws-sdk/client-dynamodb"
+      - "@aws-sdk/util-dynamodb"
+    exclude:
+      - "@aws-sdk/*"
+    sourcemap:
+      type: linked
+      setNodeOptions: true
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  stage: ${opt:stage, 'pet'}
+  region: us-east-1
+  tracing:
+    lambda: true
+  iam:
+    role:
+      ${file(./ymls/roles.yml)}
+
+  stackTags:
+      projectName: ${self:service}-${self:provider.stage}
+      project: ${self:service}-${self:provider.stage}
+      stage: ${sls:stage}
+      env: ${opt:stage, 'dev'}
+      version: ${file(./package.json):version}
+
+  environment:
+    STAGE: ${file(./ymls/environment.yml):${opt:stage}.STAGE}
+    REGION: ${file(./ymls/environment.yml):REGION}
+
+custom:
+  stage: ${self:provider.stage}
+  prune:
+    automatic: true
+    number: 3
+
+functions: ${file(ymls/functions.yml)}
+
+resources: ${file(./ymls/resources.yml)}
+
+stepFunctions: ${file(./ymls/stepFunctions.yml)}

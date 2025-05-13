@@ -1,0 +1,24 @@
+{
+  "extends": "@tsconfig/node20/tsconfig.json",
+  "compilerOptions": {
+    "moduleResolution": "NodeNext",
+    "module": "NodeNext",
+    "typeRoots": ["./node_modules/@types", "src/shared/@types"],
+    "removeComments": true,
+    "importsNotUsedAsValues": "remove",
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "strict": true,
+    "skipDefaultLibCheck": true,
+    "experimentalDecorators": true,
+    "skipLibCheck": true,
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "forceConsistentCasingInFileNames": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "sourceMap": true // Cria um apontamento de cada arquivo do build para o arquivo original criado em .TS permitindo o debugging
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["./node_modules"]
+}

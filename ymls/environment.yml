@@ -1,0 +1,15 @@
+prd:
+  STAGE: "prd"
+  DYNAMO_TABLE_PROCESS: "boilerplate-serverless-step-functions-prd-orders"
+
+pet:
+  STAGE: "pet"
+  DYNAMO_TABLE_PROCESS: "boilerplate-serverless-step-functions-pet-orders"
+
+dev:
+  STAGE: "dev"
+  DYNAMO_TABLE_PROCESS: "boilerplate-serverless-step-functions-dev-orders"
+
+REGION: "us-east-1"
+
+

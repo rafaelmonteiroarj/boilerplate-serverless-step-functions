@@ -1,0 +1,49 @@
+stateMachines:
+  RunReport:
+    name: ${self:service}-${self:provider.stage}-run
+    definition:
+      StartAt: Create Order
+      States:
+        Create Order:
+          Type: Task
+          Resource:
+              Fn::GetAtt: [AddOrder, Arn]
+          Comment: "Create Order"
+          Next: Get Order
+          Retry:
+            - ErrorEquals: ["Lambda.ServiceException", "Lambda.AWSLambdaException", "Lambda.SdkClientException"]
+              IntervalSeconds: 2
+              MaxAttempts: 3
+              BackoffRate: 2
+          Catch:
+            - ErrorEquals:
+                - States.ALL
+              ResultPath: "$.error"
+              Next: Finished
+
+        Get Order:
+          Type: Task
+          Resource:
+            Fn::GetAtt: [GetOrderById, Arn]
+          Comment: "Get Order"
+          Next: Wait 2 Seconds
+          Retry:
+            - ErrorEquals:
+                - States.ALL
+              IntervalSeconds: 60
+              MaxAttempts: 2
+          Catch:
+            - ErrorEquals:
+                - States.ALL
+              ResultPath: "$.error"
+              Next: Finished
+
+        Wait 2 Seconds:
+          Type: Wait
+          Comment: "Wait 2 Seconds"
+          Seconds: 2
+          Next: Finished
+
+        Finished:
+          Type: Succeed
+          Comment: "Finished"
