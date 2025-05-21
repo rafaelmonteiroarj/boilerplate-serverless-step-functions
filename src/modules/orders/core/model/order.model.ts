@@ -7,6 +7,7 @@ import {
 export class OrderModel extends DefaultModel {
   name!: string;
   description!: string;
+  phoneNumber?: string;
 
   private constructor(data: Partial<OrderModel>) {
     super();
@@ -21,6 +22,7 @@ export class OrderModel extends DefaultModel {
       id: data.id ? data.id : uuidv7(),
       createdAt: data.createdAt ? data.createdAt : new Date(),
       updatedAt: data.updatedAt ? data.updatedAt : new Date(),
+      phoneNumber: data.phoneNumber,
     });
   }
 

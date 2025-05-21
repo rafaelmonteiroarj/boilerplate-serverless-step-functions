@@ -1,13 +1,14 @@
 ## 📖 Sobre
 
-Boilerplate de Step Functions para integração com AWS Lambda.
+Boilerplate de Step Functions para integração com AWS Lambda, incluindo envio de SMS via AWS SNS.
 
 ### Principais Funcionalidades
 
 - 👥 **Criação de Pedidos**
   - Criação de novos pedidos
-  - Validação de dados
+  - Validação de dados (incluindo número de telefone)
   - Persistência no DynamoDB
+  - Disparo de SMS para o cliente
 
 
 ## 🏗 Arquitetura
@@ -28,6 +29,7 @@ src/
 │       │   └── handlers/
 │       │       ├── add-order.ts
 │       │       ├── get-order-by-id.ts
+│       │       ├── send-order-sms.ts
 │       │       ├── dtos/
 │       │       │   └── create-order.dto.ts
 │       │       └── validation/
@@ -65,6 +67,7 @@ src/
   - [Serverless Framework](https://www.serverless.com/)
   - [AWS Lambda](https://aws.amazon.com/lambda/)
   - [Step Functions](https://aws.amazon.com/step-functions/)
+  - [SNS (Simple Notification Service)](https://aws.amazon.com/sns/)
 
 - **Qualidade**
   - [ESLint](https://eslint.org/)
@@ -77,7 +80,6 @@ src/
 
 - Node.js v22.12.0 (via nvm)
 - PNPM
-- PostgreSQL
 - AWS CLI configurado
 
 ### Instalação
@@ -88,13 +90,13 @@ src/
    nvm use v22.12.0
    ```
 
-3. **Instale as dependências**
+2. **Instale as dependências**
    ```bash
    npm install -g pnpm
    pnpm install
    ```
 
-4. **Configure o ambiente**
+3. **Configure o ambiente**
    ```bash
    cp .env.example .env
    # Edite o arquivo .env com suas configurações
@@ -104,7 +106,7 @@ src/
 
 - 🚀 **Deploy**
   ```bash
-  pnpm deploy:pet        # Deploy ambiente de desenvolvimento
+  pnpm deploy:dev        # Deploy ambiente de desenvolvimento
   pnpm deploy:pet        # Deploy ambiente de teste
   pnpm deploy:prd        # Deploy produção
   ```
@@ -117,64 +119,65 @@ src/
 
 ## 🔄 Fluxo de Orquestração (Step Functions)
 
-O projeto utiliza AWS Step Functions para orquestrar processos entre Lambdas. Exemplo de fluxo:
+O projeto utiliza AWS Step Functions para orquestrar processos entre Lambdas. O fluxo principal é:
 
-<div align="center">
-  <img src="./docs/stepfunctions_graph.png" width="400" alt="Fluxo Step Functions" />
-</div>
+```
+[Create Order] -> [Send SMS] -> [Get Order] -> [Wait] -> [Finished]
+```
 
-**Descrição do fluxo:**
-- Criação de pedido (Create Order)
-- Consulta do pedido (Get Order)
-- Espera de 2 segundos (Wait)
-- Finalização (Finished)
-- Tratamento de erros com Catch
+- **Create Order**: Cria o pedido no DynamoDB.
+- **Send SMS**: Dispara um SMS para o número informado no pedido usando AWS SNS.
+- **Get Order**: Consulta o pedido criado.
+- **Wait**: Espera 2 segundos.
+- **Finished**: Finaliza o fluxo.
+- **Tratamento de erros**: Todos os passos possuem catch para tratamento de falhas.
 
+> O campo `phoneNumber` é opcional, mas se informado, o SMS será enviado após a criação do pedido.
 
-## 🐞 Debugando Funções Lambda Localmente
-
-Você pode debugar handlers Lambda localmente usando o VSCode e o `ts-node`:
-
-1. **Configuração do VSCode**
-   - O arquivo `.vscode/launch.json` já está pronto para debug com TypeScript:
+### Exemplo de Payload de Criação de Pedido
 
 ```json
 {
-  "type": "node",
-  "request": "launch",
-  "name": "Debug Handler (ts-node)",
-  "program": "${workspaceFolder}/.vscode/invoke.js",
-  "runtimeArgs": ["-r", "ts-node/register"],
-  "console": "integratedTerminal",
-  "envFile": "${workspaceFolder}/.env"
+  "name": "Pedido 1",
+  "description": "Descrição do pedido 1",
+  "phoneNumber": "+5511999999999"
 }
 ```
 
-2. **Arquivo de entrada para debug**
-   - Edite `.vscode/invoke.js` para apontar para o handler desejado e simular o evento:
+- O campo `phoneNumber` deve estar no formato internacional (ex: +5511999999999).
 
-```js
-require("dotenv").config();
-const { handler } = require("../src/modules/orders/http/handlers/add-order");
-const mockEvent = { body: { name: "Order 1", description: "Order 1 description" } };
-handler(mockEvent)
-  .then((result) => console.log("Resultado:", result))
-  .catch((error) => console.error("Erro:", error));
+### Exemplo de Resposta do Step Function
+
+```json
+{
+  "id": "...",
+  "name": "Pedido 1",
+  "description": "Descrição do pedido 1",
+  "phoneNumber": "+5511999999999",
+  "createdAt": "...",
+  "updatedAt": "..."
+}
 ```
 
-3. **Coloque breakpoints**
-   - Abra o handler desejado e adicione breakpoints no VSCode.
+## 📲 Envio de SMS
 
-4. **Inicie o debug**
-   - No VSCode, selecione "Debug Handler (ts-node)" e pressione F5.
+O envio de SMS é realizado pelo AWS SNS. O texto enviado pode ser customizado no handler `send-order-sms.ts`.
 
----
+- O número de telefone deve ser válido e estar no formato internacional.
+- O envio é feito automaticamente pelo Step Function após a criação do pedido.
+- O status do envio pode ser acompanhado nos logs da função Lambda `SendOrderSms`.
+
+### Testando o Envio de SMS
+
+- Crie um pedido com o campo `phoneNumber` preenchido.
+- Verifique nos logs da função Lambda se o SMS foi enviado com sucesso.
+- Caso haja erro, o Step Function irá capturar e finalizar o fluxo.
 
 ## 🧪 Testando e Invocando Funções
 
 - **Invocar AddOrder localmente:**
   ```bash
-  npx serverless invoke local --function AddOrder --stage dev --data '{ "name": "Order 1", "description": "Order 1 description" }'
+  npx serverless invoke local --function AddOrder --stage dev --data '{ "name": "Pedido 1", "description": "Descrição do pedido 1", "phoneNumber": "+5511999999999" }'
   ```
 
 - **Invocar GetOrderById localmente:**
@@ -182,18 +185,54 @@ handler(mockEvent)
   npx serverless invoke local --function GetOrderById --stage dev --data '{ "id": "SEU_ID_DE_PEDIDO" }'
   ```
 
-- **Invocar função em ambiente AWS:**
+- **Invocar SendOrderSms localmente:**
   ```bash
-  npx serverless invoke --function AddOrder --stage dev --region us-east-1 --log
+  npx serverless invoke local --function SendOrderSms --stage dev --data '{ "id": "...", "name": "Pedido 1", "description": "Descrição do pedido 1", "phoneNumber": "+5511999999999" }'
   ```
 
 - **Ver logs da função:**
   ```bash
-  npx serverless logs -f AddOrder -s dev -r us-east-1 -t
+  npx serverless logs -f SendOrderSms -s dev -r us-east-1 -t
   ```
 
-> Consulte o arquivo `serverless.yml` para os nomes exatos das funções.
+## 🛠 Funções Lambda Disponíveis
 
-Mais exemplos e detalhes na [documentação oficial do Serverless](https://www.serverless.com/framework/docs/providers/aws/cli-reference/).
+- **AddOrder**: Cria um novo pedido.
+- **GetOrderById**: Consulta um pedido pelo ID.
+- **SendOrderSms**: Envia SMS para o telefone do pedido.
+
+## 🐞 Debugando Funções Lambda Localmente
+
+Você pode debugar handlers Lambda localmente usando o VSCode e o `ts-node`:
+
+1. **Configuração do VSCode**
+   - O arquivo `.vscode/launch.json` já está pronto para debug com TypeScript.
+2. **Arquivo de entrada para debug**
+   - Edite `.vscode/invoke.js` para apontar para o handler desejado e simular o evento.
+3. **Coloque breakpoints**
+   - Abra o handler desejado e adicione breakpoints no VSCode.
+4. **Inicie o debug**
+   - No VSCode, selecione "Debug Handler (ts-node)" e pressione F5.
+
+## 🛡️ Troubleshooting e Dicas para SMS
+
+- Certifique-se de que o número está no formato internacional.
+- O envio de SMS pode estar sujeito a restrições de sandbox da AWS em contas novas.
+- Verifique os logs da função Lambda para detalhes de erro.
+- O SNS pode ter limites de envio por região/país.
+- Para produção, solicite remoção do sandbox do SNS se necessário.
+
+## ❓ FAQ Rápido sobre SMS
+
+- **O SMS é cobrado?** Sim, consulte a [tabela de preços do SNS](https://aws.amazon.com/sns/sms-pricing/).
+- **Posso customizar a mensagem?** Sim, altere o handler `send-order-sms.ts`.
+- **Posso enviar para qualquer país?** Sim, desde que o número esteja no formato internacional e a AWS permita o envio para o destino.
+- **Como monitorar entregas?** Use CloudWatch Logs e métricas do SNS.
+
+## 📚 Referências
+
+- [AWS SNS SMS Docs](https://docs.aws.amazon.com/sns/latest/dg/sms_publish-to-phone.html)
+- [Serverless Framework Docs](https://www.serverless.com/framework/docs/)
+- [Step Functions Docs](https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html)
 
 ---

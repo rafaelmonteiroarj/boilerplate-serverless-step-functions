@@ -9,12 +9,29 @@ stateMachines:
           Resource:
               Fn::GetAtt: [AddOrder, Arn]
           Comment: "Create Order"
-          Next: Get Order
+          Next: Send SMS
           Retry:
             - ErrorEquals: ["Lambda.ServiceException", "Lambda.AWSLambdaException", "Lambda.SdkClientException"]
               IntervalSeconds: 2
               MaxAttempts: 3
               BackoffRate: 2
+          Catch:
+            - ErrorEquals:
+                - States.ALL
+              ResultPath: "$.error"
+              Next: Finished
+
+        Send SMS:
+          Type: Task
+          Resource:
+            Fn::GetAtt: [SendOrderSms, Arn]
+          Comment: "Send SMS"
+          Next: Get Order
+          Retry:
+            - ErrorEquals:
+                - States.ALL
+              IntervalSeconds: 10
+              MaxAttempts: 2
           Catch:
             - ErrorEquals:
                 - States.ALL

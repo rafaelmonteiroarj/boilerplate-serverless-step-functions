@@ -11,4 +11,5 @@ statements:
       - "logs:CreateLogStream"
       - "logs:PutLogEvents"
       - "states:StartExecution"
+      - "sns:Publish"
     Resource: "*"

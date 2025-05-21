@@ -10,6 +10,7 @@ const addOrderUseCase = new AddOrderUseCase(orderRepository);
 export const handler = async (event: {
   name: string;
   description: string;
+  phoneNumber?: string;
 }): Promise<OrderModel> => {
   try {
     const payload = validationOrderSchema.parse(event);

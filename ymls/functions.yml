@@ -13,3 +13,10 @@ GetOrderById:
   environment:
     DYNAMO_TABLE_PROCESS: ${file(./ymls/environment.yml):${opt:stage}.DYNAMO_TABLE_PROCESS}
     STAGE: ${file(./ymls/environment.yml):${opt:stage}.STAGE}
+
+SendOrderSms:
+  handler: src/modules/orders/http/handlers/send-order-sms.handler
+  name: ${self:service}-${self:provider.stage}-sendOrderSms
+  environment:
+    STAGE: ${file(./ymls/environment.yml):${opt:stage}.STAGE}
+    REGION: ${file(./ymls/environment.yml):REGION}
