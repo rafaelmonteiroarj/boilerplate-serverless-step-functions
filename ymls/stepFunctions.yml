@@ -2,14 +2,32 @@ stateMachines:
   RunReport:
     name: ${self:service}-${self:provider.stage}-run
     definition:
-      StartAt: Create Order
+      StartAt: CheckCircuitBreaker
       States:
+        CheckCircuitBreaker:
+          Type: Task
+          Resource:
+            Fn::GetAtt: [checkCircuitBreaker, Arn]
+          Parameters:
+            serviceName: "SNS_SMS"
+            input: $
+          Retry:
+            - ErrorEquals: ["Lambda.ServiceException", "Lambda.AWSLambdaException", "Lambda.SdkClientException"]
+              IntervalSeconds: 1
+              MaxAttempts: 2
+          Catch:
+            - ErrorEquals:
+                - States.ALL
+              ResultPath: "$.error"
+              Next: CircuitBreakerOpen
+          Next: Create Order
+
         Create Order:
           Type: Task
           Resource:
-              Fn::GetAtt: [AddOrder, Arn]
+            Fn::GetAtt: [AddOrder, Arn]
           Comment: "Create Order"
-          Next: Send SMS
+          Next: CheckUserLimits
           Retry:
             - ErrorEquals: ["Lambda.ServiceException", "Lambda.AWSLambdaException", "Lambda.SdkClientException"]
               IntervalSeconds: 2
@@ -19,24 +37,72 @@ stateMachines:
             - ErrorEquals:
                 - States.ALL
               ResultPath: "$.error"
-              Next: Finished
+              Next: RegisterFailure
+
+        CheckUserLimits:
+          Type: Task
+          Resource:
+            Fn::GetAtt: [checkUserLimits, Arn]
+          Parameters:
+            userId: $.userId
+            date: $.date
+          Retry:
+            - ErrorEquals: ["Lambda.ServiceException", "Lambda.AWSLambdaException", "Lambda.SdkClientException"]
+              IntervalSeconds: 1
+              MaxAttempts: 2
+          Catch:
+            - ErrorEquals:
+                - States.ALL
+              ResultPath: "$.error"
+              Next: RegisterFailure
+          Next: Send SMS
 
         Send SMS:
           Type: Task
           Resource:
             Fn::GetAtt: [SendOrderSms, Arn]
           Comment: "Send SMS"
-          Next: Get Order
+          Next: RegisterSuccess
           Retry:
-            - ErrorEquals:
-                - States.ALL
-              IntervalSeconds: 10
-              MaxAttempts: 2
+            - ErrorEquals: ["Lambda.ServiceException", "Lambda.AWSLambdaException", "Lambda.SdkClientException"]
+              IntervalSeconds: 2
+              MaxAttempts: 3
+              BackoffRate: 2.0
           Catch:
             - ErrorEquals:
                 - States.ALL
               ResultPath: "$.error"
-              Next: Finished
+              Next: RegisterFailure
+
+        RegisterSuccess:
+          Type: Task
+          Resource:
+            Fn::GetAtt: [registerCircuitBreakerResult, Arn]
+          Parameters:
+            serviceName: "SNS_SMS"
+            success: true
+            messageId: $.messageId
+          Next: AuditMessage
+
+        RegisterFailure:
+          Type: Task
+          Resource:
+            Fn::GetAtt: [registerCircuitBreakerResult, Arn]
+          Parameters:
+            serviceName: "SNS_SMS"
+            success: false
+            messageId: $.messageId
+          Next: FailureState
+
+        AuditMessage:
+          Type: Task
+          Resource:
+            Fn::GetAtt: [auditMessage, Arn]
+          Parameters:
+            messageId: $.messageId
+            status: "SUCCESS"
+            details: $
+          Next: Get Order
 
         Get Order:
           Type: Task
@@ -45,8 +111,7 @@ stateMachines:
           Comment: "Get Order"
           Next: Wait 2 Seconds
           Retry:
-            - ErrorEquals:
-                - States.ALL
+            - ErrorEquals: ["Lambda.ServiceException", "Lambda.AWSLambdaException", "Lambda.SdkClientException"]
               IntervalSeconds: 60
               MaxAttempts: 2
           Catch:
@@ -61,6 +126,15 @@ stateMachines:
           Seconds: 2
           Next: Finished
 
+        CircuitBreakerOpen:
+          Type: Fail
+          Cause: "Circuit Breaker está aberto"
+          Error: "CircuitBreakerOpen"
+
         Finished:
           Type: Succeed
           Comment: "Finished"
+
+        FailureState:
+          Type: Fail
+          Cause: "Falha no processamento do pedido"

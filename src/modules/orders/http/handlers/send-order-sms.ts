@@ -21,7 +21,7 @@ export const handler = async (event: OrderModel) => {
   try {
     const data = await sns.send(command);
     logger.info("SMS enviado com sucesso", data);
-    return { success: true, messageId: data.MessageId };
+    return { success: true, messageId: data.MessageId, ...event };
   } catch (error) {
     logger.error("Erro ao enviar SMS", error);
     throw error;

@@ -6,6 +6,8 @@ AddOrder:
   environment:
     DYNAMO_TABLE_PROCESS: ${file(./ymls/environment.yml):${opt:stage}.DYNAMO_TABLE_PROCESS}
     STAGE: ${file(./ymls/environment.yml):${opt:stage}.STAGE}
+    REGION: ${file(./ymls/environment.yml):REGION}
+    SNS_TOPIC_ARN: !Ref OrderSmsTopic
 
 GetOrderById:
   handler: src/modules/orders/http/handlers/get-order-by-id.handler
@@ -20,3 +22,43 @@ SendOrderSms:
   environment:
     STAGE: ${file(./ymls/environment.yml):${opt:stage}.STAGE}
     REGION: ${file(./ymls/environment.yml):REGION}
+
+# Circuit Breaker Functions
+checkCircuitBreaker:
+  handler: src/functions/circuitBreaker/check.handler
+  name: ${self:service}-${self:provider.stage}-cb-check
+  timeout: 30
+  memorySize: 256
+  environment:
+    CIRCUIT_BREAKER_TABLE: ${self:service}-${self:provider.stage}-circuit-breaker
+  events:
+    - sqs:
+        arn: !GetAtt MainQueue.Arn
+        batchSize: 10
+        maximumBatchingWindow: 30
+
+registerCircuitBreakerResult:
+  handler: src/functions/circuitBreaker/registerResult.handler
+  name: ${self:service}-${self:provider.stage}-cb-register
+  timeout: 30
+  memorySize: 256
+  environment:
+    CIRCUIT_BREAKER_TABLE: ${self:service}-${self:provider.stage}-circuit-breaker
+    AUDIT_TABLE: ${self:service}-${self:provider.stage}-audit
+
+checkUserLimits:
+  handler: src/functions/limits/checkUserLimits.handler
+  name: ${self:service}-${self:provider.stage}-user-limits
+  timeout: 30
+  memorySize: 256
+  environment:
+    USER_LIMITS_TABLE: ${self:service}-${self:provider.stage}-user-limits
+
+auditMessage:
+  handler: src/functions/audit/auditMessage.handler
+  name: ${self:service}-${self:provider.stage}-audit
+  timeout: 30
+  memorySize: 256
+  environment:
+    AUDIT_TABLE: ${self:service}-${self:provider.stage}-audit
+    AUDIT_BUCKET: ${self:service}-${self:provider.stage}-audit-logs

@@ -23,8 +23,12 @@
     ]
   },
   "devDependencies": {
+    "@aws-sdk/client-dynamodb": "^3.751.0",
+    "@aws-sdk/client-s3": "^3.815.0",
+    "@aws-sdk/lib-dynamodb": "^3.814.0",
     "@eslint/js": "^9.8.0",
     "@tsconfig/node20": "^20.1.4",
+    "@types/node": "^22.15.17",
     "@types/uuid": "^10.0.0",
     "@typescript-eslint/eslint-plugin": "^8.23.0",
     "@typescript-eslint/parser": "^8.23.0",
@@ -43,14 +47,12 @@
     "typescript": "^5.5.4"
   },
   "dependencies": {
-    "@aws-sdk/client-dynamodb": "^3.623.0",
+    "@aws-sdk/client-sns": "^3.623.0",
     "@aws-sdk/util-dynamodb": "^3.670.0",
-    "@types/node": "^22.15.17",
     "dotenv": "^16.4.7",
     "serverless-step-functions": "^3.23.0",
     "uuid": "^10.0.0",
     "winston": "^3.17.0",
-    "zod": "^3.24.1",
-    "@aws-sdk/client-sns": "^3.623.0"
+    "zod": "^3.24.1"
   }
 }

@@ -26,7 +26,8 @@ provider:
     lambda: true
   iam:
     role:
-      ${file(./ymls/roles.yml)}
+      statements: ${file(./ymls/roles.yml):statements}
+      name: ${self:service}-${self:provider.stage}-lambda-role
 
   stackTags:
       projectName: ${self:service}-${self:provider.stage}
